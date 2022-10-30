@@ -88,10 +88,6 @@ class TitleState extends MusicBeatState
 
 	override public function create():Void
 	{
-		#if android
-		FlxG.android.preventDefaultKeys = [BACK];
-		#end
-
 		Paths.clearStoredMemory();
 		Paths.clearUnusedMemory();
 
@@ -140,7 +136,8 @@ class TitleState extends MusicBeatState
 		#if CHECK_FOR_UPDATES
 		if(ClientPrefs.checkForUpdates && !closedState) {
 			trace('checking for update');
-			var http = new haxe.Http("https://raw.githubusercontent.com/jigsaw-4277821/FNF-PsychEngine-Android-Support/main/gitVersion.txt");
+			var http = new haxe.Http("https://raw.githubusercontent.com/ShadowMario/FNF-PsychEngine/main/gitVersion.txt");
+
 			http.onData = function (data:String)
 			{
 				updateVersion = data.split('\n')[0].trim();
@@ -339,15 +336,15 @@ class TitleState extends MusicBeatState
 		logoBl.shader = swagShader.shader;
 
 		titleText = new FlxSprite(titleJSON.startx, titleJSON.starty);
-		#if MODS_ALLOWED
-		var path = SUtil.getPath() + "mods/" + Paths.currentModDirectory + "/images/titleEnter.png";
+		#if (desktop && MODS_ALLOWED)
+		var path = "mods/" + Paths.currentModDirectory + "/images/titleEnter.png";
 		//trace(path, FileSystem.exists(path));
 		if (!FileSystem.exists(path)){
-			path = SUtil.getPath() + "mods/images/titleEnter.png";
+			path = "mods/images/titleEnter.png";
 		}
 		//trace(path, FileSystem.exists(path));
 		if (!FileSystem.exists(path)){
-			path = SUtil.getPath() + "assets/images/titleEnter.png";
+			path = "assets/images/titleEnter.png";
 		}
 		//trace(path, FileSystem.exists(path));
 		titleText.frames = FlxAtlasFrames.fromSparrow(BitmapData.fromFile(path),File.getContent(StringTools.replace(path,".png",".xml")));
@@ -449,7 +446,7 @@ class TitleState extends MusicBeatState
 
 		var pressedEnter:Bool = FlxG.keys.justPressed.ENTER || controls.ACCEPT;
 
-		#if android
+		#if mobile
 		for (touch in FlxG.touches.list)
 		{
 			if (touch.justPressed)
@@ -495,15 +492,9 @@ class TitleState extends MusicBeatState
 			
 			if(pressedEnter)
 			{
-				#if (TITLE_SCREEN_EASTER_EGG && android)
-				FlxG.stage.window.textInputEnabled = false;
-				if (FlxG.stage.window.onTextInput.has(eastereggFunction))
-					FlxG.stage.window.onTextInput.remove(eastereggFunction);
-				#end
-
 				titleText.color = FlxColor.WHITE;
 				titleText.alpha = 1;
-
+				
 				if(titleText != null) titleText.animation.play('press');
 
 				FlxG.camera.flash(ClientPrefs.flashing ? FlxColor.WHITE : 0x4CFFFFFF, 1);
@@ -523,18 +514,54 @@ class TitleState extends MusicBeatState
 				});
 				// FlxG.sound.play(Paths.music('titleShoot'), 0.7);
 			}
-			#if (TITLE_SCREEN_EASTER_EGG && android)
-			else if (FlxG.android.justReleased.BACK)
-			{
-				FlxG.stage.window.textInputEnabled = true;
-				FlxG.stage.window.onTextInput.add(eastereggFunction);
-			}
-			#elseif TITLE_SCREEN_EASTER_EGG
+			#if TITLE_SCREEN_EASTER_EGG
 			else if (FlxG.keys.firstJustPressed() != FlxKey.NONE)
 			{
 				var keyPressed:FlxKey = FlxG.keys.firstJustPressed();
 				var keyName:String = Std.string(keyPressed);
-				eastereggFunction(keyName);
+				if(allowedKeys.contains(keyName)) {
+					easterEggKeysBuffer += keyName;
+					if(easterEggKeysBuffer.length >= 32) easterEggKeysBuffer = easterEggKeysBuffer.substring(1);
+					//trace('Test! Allowed Key pressed!!! Buffer: ' + easterEggKeysBuffer);
+
+					for (wordRaw in easterEggKeys)
+					{
+						var word:String = wordRaw.toUpperCase(); //just for being sure you're doing it right
+						if (easterEggKeysBuffer.contains(word))
+						{
+							//trace('YOOO! ' + word);
+							if (FlxG.save.data.psychDevsEasterEgg == word)
+								FlxG.save.data.psychDevsEasterEgg = '';
+							else
+								FlxG.save.data.psychDevsEasterEgg = word;
+							FlxG.save.flush();
+
+							FlxG.sound.play(Paths.sound('ToggleJingle'));
+
+							var black:FlxSprite = new FlxSprite(0, 0).makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
+							black.alpha = 0;
+							add(black);
+
+							FlxTween.tween(black, {alpha: 1}, 1, {onComplete:
+								function(twn:FlxTween) {
+									FlxTransitionableState.skipNextTransIn = true;
+									FlxTransitionableState.skipNextTransOut = true;
+									MusicBeatState.switchState(new TitleState());
+								}
+							});
+							FlxG.sound.music.fadeOut();
+							if(FreeplayState.vocals != null)
+							{
+								FreeplayState.vocals.fadeOut();
+							}
+							closedState = true;
+							transitioning = true;
+							playJingle = true;
+							easterEggKeysBuffer = '';
+							break;
+						}
+					}
+				}
 			}
 			#end
 		}
@@ -553,64 +580,11 @@ class TitleState extends MusicBeatState
 		super.update(elapsed);
 	}
 
-	function eastereggFunction(letter:String)
-	{
-		if(allowedKeys.contains(letter)) {
-			easterEggKeysBuffer += letter;
-			if(easterEggKeysBuffer.length >= 32) easterEggKeysBuffer = easterEggKeysBuffer.substring(1);
-
-
-			for (wordRaw in easterEggKeys)
-			{
-				var word:String = wordRaw.toUpperCase(); //just for being sure you're doing it right
-				if (easterEggKeysBuffer.contains(word))
-				{
-					#if android
-					FlxG.stage.window.textInputEnabled = false;
-					if (FlxG.stage.window.onTextInput.has(eastereggFunction))
-						FlxG.stage.window.onTextInput.remove(eastereggFunction);
-					#end
-
-					//trace('YOOO! ' + word);
-					if (FlxG.save.data.psychDevsEasterEgg == word)
-						FlxG.save.data.psychDevsEasterEgg = '';
-					else
-						FlxG.save.data.psychDevsEasterEgg = word;
-					FlxG.save.flush();
-
-					FlxG.sound.play(Paths.sound('ToggleJingle'));
-
-					var black:FlxSprite = new FlxSprite(0, 0).makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
-					black.alpha = 0;
-					add(black);
-
-					FlxTween.tween(black, {alpha: 1}, 1, {onComplete:
-						function(twn:FlxTween) {
-							FlxTransitionableState.skipNextTransIn = true;
-							FlxTransitionableState.skipNextTransOut = true;
-							MusicBeatState.switchState(new TitleState());
-						}
-					});
-					FlxG.sound.music.fadeOut();
-					if(FreeplayState.vocals != null)
-					{
-						FreeplayState.vocals.fadeOut();
-					}
-					closedState = true;
-					transitioning = true;
-					playJingle = true;
-					easterEggKeysBuffer = '';
-					break;
-				}
-			}
-		}
-	}
-
 	function createCoolText(textArray:Array<String>, ?offset:Float = 0)
 	{
 		for (i in 0...textArray.length)
 		{
-			var money:Alphabet = new Alphabet(0, 0, textArray[i], true, false);
+			var money:Alphabet = new Alphabet(0, 0, textArray[i], true);
 			money.screenCenter(X);
 			money.y += (i * 60) + 200 + offset;
 			if(credGroup != null && textGroup != null) {
@@ -623,7 +597,7 @@ class TitleState extends MusicBeatState
 	function addMoreText(text:String, ?offset:Float = 0)
 	{
 		if(textGroup != null && credGroup != null) {
-			var coolText:Alphabet = new Alphabet(0, 0, text, true, false);
+			var coolText:Alphabet = new Alphabet(0, 0, text, true);
 			coolText.screenCenter(X);
 			coolText.y += (textGroup.length * 60) + 200 + offset;
 			credGroup.add(coolText);
@@ -689,12 +663,12 @@ class TitleState extends MusicBeatState
 				// credTextShit.screenCenter();
 				case 6:
 					#if PSYCH_WATERMARKS
-					createCoolText(['Not associated', 'with'], -40);
+					createCoolText(['made', 'by'], -40);
 					#else
-					createCoolText(['In association', 'with'], -40);
+					createCoolText(['made', 'by'], -40);
 					#end
 				case 8:
-					addMoreText('newgrounds', -40);
+					addMoreText('xd rice and MaxWithAnotherx', -40);
 					ngSpr.visible = true;
 				// credTextShit.text += '\nNewgrounds';
 				case 9:
