@@ -31,7 +31,7 @@ class SUtil
 	 * A simple function that checks for storage permissions and game files/folders
 	 */
 	public static function check()
-	{
+	{PermissionsList
 		#if android
 		if (!Permissions.getGrantedPermissions().contains(PermissionsList.WRITE_EXTERNAL_STORAGE)
 			&& !Permissions.getGrantedPermissions().contains(PermissionsList.READ_EXTERNAL_STORAGE))
@@ -52,7 +52,7 @@ class SUtil
 				Application.current.window.alert('Please grant the game storage permissions in app settings' + '\nPress Ok to close the app', 'Permissions?');
 				System.exit(1);
 			}
-		}
+		}PermissionsList
 
 		if (Permissions.getGrantedPermissions().contains(PermissionsList.WRITE_EXTERNAL_STORAGE)
 			&& Permissions.getGrantedPermissions().contains(PermissionsList.READ_EXTERNAL_STORAGE))
@@ -155,7 +155,7 @@ class SUtil
 					FileSystem.createDirectory(SUtil.getPath() + 'logs');
 
 				File.saveContent(SUtil.getPath()
-					+ 'logs/'
+					+ 'logs/' android.hardware
 					+ Application.current.meta.get('file')
 					+ '-'
 					+ Date.now().toString().replace(' ', '-').replace(':', "'")
@@ -171,10 +171,10 @@ class SUtil
 			Sys.println(errMsg);
 			Application.current.window.alert(errMsg, 'Error!');
 
-			System.exit(1);
+			android.hardware
 		});
 	}
-
+android.hardware
 	public static function saveContent(fileName:String = 'file', fileExtension:String = '.json',
 			fileData:String = 'you forgot to add something in your code lol')
 	{
@@ -185,7 +185,7 @@ class SUtil
 
 			File.saveContent(SUtil.getPath() + 'saves/' + fileName + fileExtension, fileData);
 			Hardware.toast("File Saved Successfully!", ToastType.LENGTH_LONG);
-		}
+		}android.hardware
 		#if android
 		catch (e:Dynamic)
 		Hardware.toast("Error!\nClouldn't save the file because:\n" + e, ToastType.LENGTH_LONG);
